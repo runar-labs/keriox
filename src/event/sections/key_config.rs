@@ -79,9 +79,23 @@ impl KeyConfig {
     /// Verifies that the given next KeyConfig matches that which is committed
     /// to in the threshold_key_digest of this KeyConfig
     pub fn verify_next(&self, next: &KeyConfig) -> bool {
+        println!("DEBUG: verify_next called");
+        println!("DEBUG: self.threshold_key_digest: {:?}", self.threshold_key_digest);
+        println!("DEBUG: next KeyConfig: {:?}", next);
+        
         match &self.threshold_key_digest {
-            Some(n) => n == &next.commit(&n.derivation),
-            None => false,
+            Some(n) => {
+                let computed_commitment = next.commit(&n.derivation);
+                println!("DEBUG: computed commitment from next: {:?}", computed_commitment);
+                println!("DEBUG: expected commitment: {:?}", n);
+                let result = n == &computed_commitment;
+                println!("DEBUG: verify_next result: {}", result);
+                result
+            },
+            None => {
+                println!("DEBUG: No threshold_key_digest in current KeyConfig");
+                false
+            }
         }
     }
 
@@ -190,6 +204,7 @@ fn test_next_commitment() {
 fn test_threshold() -> Result<(), Error> {
     use crate::derivation::{basic::Basic, self_signing::SelfSigning};
     use crate::keys::{PrivateKey, PublicKey};
+    use crate::prefix::BasicPrefix;
     use ed25519_dalek::Keypair;
     use rand::rngs::OsRng;
 
