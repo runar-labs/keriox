@@ -47,7 +47,7 @@ impl KeyManager for CryptoBox {
         Ok(())
     }
 }
-//#[cfg(feature = "demo")]
+
 impl CryptoBox {
     pub fn new() -> Result<Self, Error> {
         let signer = Signer::new();
@@ -57,6 +57,45 @@ impl CryptoBox {
             next_pub_key,
             next_priv_key,
         })
+    }
+
+    /// Extract the current private key bytes for secure storage
+    pub fn current_private_key_bytes(&self) -> Vec<u8> {
+        self.signer.priv_key.key()
+    }
+
+    /// Extract the next private key bytes for secure storage
+    pub fn next_private_key_bytes(&self) -> Vec<u8> {
+        self.next_priv_key.key()
+    }
+
+    /// Create a CryptoBox from existing private key bytes (for restoration from secure storage)
+    pub fn from_private_keys(current_priv_bytes: Vec<u8>, next_priv_bytes: Vec<u8>) -> Result<Self, Error> {
+        // Recreate the current keypair
+        let current_priv_key = PrivateKey::new(current_priv_bytes);
+        let current_pub_key = Self::derive_public_key_from_private(&current_priv_key)?;
+        
+        // Recreate the next keypair
+        let next_priv_key = PrivateKey::new(next_priv_bytes);
+        let next_pub_key = Self::derive_public_key_from_private(&next_priv_key)?;
+
+        let signer = Signer {
+            priv_key: current_priv_key,
+            pub_key: current_pub_key,
+        };
+
+        Ok(CryptoBox {
+            signer,
+            next_pub_key,
+            next_priv_key,
+        })
+    }
+
+    /// Derive public key from private key bytes
+    fn derive_public_key_from_private(priv_key: &PrivateKey) -> Result<PublicKey, Error> {
+        let secret_key = ed25519_dalek::SecretKey::from_bytes(&priv_key.key())?;
+        let public_key = ed25519_dalek::PublicKey::from(&secret_key);
+        Ok(PublicKey::new(public_key.to_bytes().to_vec()))
     }
 }
 
